@@ -132,10 +132,12 @@ The `lje` table contains all LJE-specific functionality for scripts.
 
 - `lje.include(path: string, execute: boolean = true) -> any`: Includes and optionally executes a Lua file from the script's folder. The path is relative to the script's root folder. If `execute` is false, the file is only loaded and not executed.
 - `lje.con_print(message: string)`: Prints a message to the LJE console with LJE formatting.
-- (lua) `lje.con_printf(format: string, ...)`: Prints a formatted message to the LJE console with LJE formatting. You can wrap text in color tags like `$red{this is red}`.
-- (lua) `lje.detour(original: function, detour: function) -> function`: Detours a function. The detour function should call the original function as needed. Returns the detoured function.
-- (lua) `lje.require(path: string) -> any`: Requires a Lua module from the script's folder. The difference between this and `lje.include` is that `lje.require` caches the module, so subsequent calls to `lje.require` with the same path will return the cached module instead of reloading it.
-- (lua) `cloned_mts`: A table containing copies of known good metatables for various object types.
+- <font color="#2242e3">(GLua)</font> `lje.con_printf(format: string, ...)`: Prints a formatted message to the LJE console with LJE formatting. You can wrap text in color tags like `$red{this is red}`.
+- <font color="#2242e3">(GLua)</font> `lje.detour(original: function, detour: function) -> function`: Detours a function. The detour function should call the original function as needed. Returns the detoured function.
+- <font color="#2242e3">(GLua)</font> `lje.require(path: string) -> any`: Requires a Lua module from the script's folder. The difference between this and `lje.include` is that `lje.require` caches the module, so subsequent calls to `lje.require` with the same path will return the cached module instead of reloading it.
+- <font color="#2242e3">(GLua)</font> `lje.get_global(...: vararg<string>)`: Traverses _G using the given path in the vararg, for example `lje.get_global("hook", "Call")` returns hook.Call
+- <font color="#2242e3">(GLua)</font> `lje.get_global_static(paths: array<string>, count: integer)`: Has the same behaviour as lje.get_global, but instead of using a vararg, you need to pass the array of paths, as well as the number of elements to be used within that array
+- <font color="#2242e3">(GLua)</font> `cloned_mts`: A table containing copies of known good metatables for various object types.
 
 ## `func` API
 
@@ -163,8 +165,8 @@ These functions are protected from debug hooks themselves, so you can safely cal
 - `lje.env.get() -> table`: Gets the current scripting environment table. This is equal to `_L`.
 - `lje.env.disable_metatables()`: Disables metatable resolution globally. This is useful for code that interacts with tables/userdata that may have custom metatables.
 - `lje.env.enable_metatables()`: Enables metatable resolution globally. This should be called after `lje.env.disable_metatables()` to restore normal behavior.
-- `lje.env.save_random_state()`: Saves the current PRNG state.
-- `lje.env.restore_random_state()`: Restores the previously saved PRNG state.
+- <font color="#e32242">(Deprecated)</font> `lje.env.save_random_state()`: Saves the current PRNG state. This function no longer does anything.
+- <font color="#e32242">(Deprecated)</font> `lje.env.restore_random_state()`: Restores the previously saved PRNG state. This function no longer does anything.
 - `lje.env.current_script() -> string`: Returns the name of the currently executing script.
 - `lje.env.is_lua_involved(offset: integer = 0) -> boolean`: Checks if Lua code is involved in the current call stack. The optional `offset` parameter allows you to skip a number of frames from the top of the stack.
 
@@ -185,6 +187,9 @@ These functions are protected from debug hooks themselves, so you can safely cal
 ## `vm` API
 
 - `lje.vm.patch_bytecodes()`: Patches relevant bytecode instructions in the current Lua VM. This is used internally, do not call it manually.
+- <font color="#2242e3">(GLua)</font> `add_engine_call_hook(callback: function)`: Adds the given callback to an array of callbacks which are called whenever set_engine_call_hook fires
+- <font color="#2242e3">(GLua)</font> `remove_engine_call_hook(callback: function)`: Removes the given callback from the engine hook callback array
+- <font color="#2242e3">(GLua)</font> <font color="#7eb547">(Internal)</font> `set_engine_call_hook(callback: function)`: Sets the function to be called whenever the engine tries to call a lua function - Use add_engine_call_hook instead of this as incorrect usage of this function will break other scripts using it
 
 ## `data` API
 
