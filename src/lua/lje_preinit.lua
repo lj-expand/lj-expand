@@ -27,6 +27,8 @@ end
 cloneTable(_G, safeEnv)
 safeEnv._G = _G -- expose original _G
 
+----------[ Metatables ]----------
+
 lje.con_print("Done! Setting up safe metatables...")
 local function cloneBaseMt(mt)
     local newMt = {}
@@ -110,6 +112,8 @@ end
 setfenv(safeEnv.lje.use_safe_basemts, safeEnv)
 setfenv(safeEnv.lje.restore_basemts, safeEnv)
 
+----------[ Detour ]----------
+
 safeEnv.lje.detour = function(origFn, detourFn)
     lje.func.mark_special(detourFn)
     lje.func.spoof(detourFn, origFn)
@@ -117,6 +121,8 @@ safeEnv.lje.detour = function(origFn, detourFn)
 end
 
 setfenv(safeEnv.lje.detour, safeEnv)
+
+----------[ Require ]----------
 
 local includeCache = {}
 safeEnv.lje.require = function(path)
@@ -138,6 +144,8 @@ safeEnv.lje.require = function(path)
 end
 
 setfenv(safeEnv.lje.require, safeEnv)
+
+----------[ Formatted Printing ]----------
 
 -- Little printf console helper with color parsing
 -- Usage: lje.con_printf("$red{Error}: Something happened!")
@@ -167,55 +175,132 @@ end
 
 setfenv(safeEnv.lje.con_printf, safeEnv)
 
-safeEnv.lje.get_global = function(...)
+----------[ Global Getters ]----------
+
+local type = type
+local rawget = rawget
+local istable = istable
+lje.get_global = function(...)
     -- Basically just a wrapper over rawget to traverse global tables safely
+    -- For a faster version, see lje.get_global_static which does no dynamic allocations and doesn't rely on a vararg
     local paths = {...}
+    local count = #paths
     local current = _G
 
-    for _, key in ipairs(paths) do
-        if type(current) ~= "table" then
+    local i = 1
+    ::iterate_globals::
+    current = rawget(current, paths[i])
+    if (current) then
+        if (i == count) then
+            return current
+        elseif (istable(current)) then
+            i = i + 1
+            goto iterate_globals
+        else
             return nil
         end
-
-        current = rawget(current, key)
-        if current == nil then
-            return nil
-        end
+    else
+        return nil
     end
+end
 
-    return current
+lje.get_global_static = function(paths, count)
+    -- Same behaviour as lje.get_global, but instead of using a vararg,
+    -- you give the function the path as a list (avoid dynamic creation of this as that defeats the purpose of the function),
+    -- along with the number of elements in the list to be traversed
+    local current = _G
+
+    local i = 1
+    ::iterate_globals::
+    current = rawget(current, paths[i])
+    if (current) then
+        if (i == count) then
+            return current
+        elseif (istable(current)) then
+            i = i + 1
+            goto iterate_globals
+        else
+            return nil
+        end
+    else
+        return nil
+    end
 end
 
 setfenv(safeEnv.lje.get_global, safeEnv)
+setfenv(safeEnv.lje.get_global_static, safeEnv)
+
+----------[ Engine Hooks ]----------
 
 local engineCallHooks = {}
+local engineCallHookCount = 0
+
+local function engineCallHookDispatcher(func, nargs, nresults, ...)
+    if (func) then
+        -- No need to check the engineCallHookCount as this function is only set as the hook once a callback is added with add_engine_call_hook
+        local i = 1
+        ::dispatch_engine_hooks::
+        local fallthrough, a, b, c, d, e, f = engineCallHooks[i](func, nargs, nresults, ...) --> Engine hooks don't return more than six values
+        if (not fallthrough) then
+            -- This hook wants to take it, let them handle the call
+            return a, b, c, d, e, f
+        end
+
+        if (i == engineCallHookCount) then
+            -- Otherwise, there's basically no hook that wants to dispatch this call, so we'll do it.
+            return func(...)
+        else
+            i = i + 1
+            goto dispatch_engine_hooks
+        end
+    end
+end
+
+local function engineCallHookNop(func, nargs, nresults, ...)
+    return func(...) -- Used when there are no callbacks added with add_engine_call_hook to avoid unnecessary computation
+end
+
 safeEnv.lje.vm.add_engine_call_hook = function(fn)
-  lje.func.mark_special(fn)
-  table.insert(engineCallHooks, fn)
+    lje.func.mark_special(fn)
+    table.insert(engineCallHooks, fn)
+
+    if (engineCallHookCount == 0) then
+        lje.vm.set_engine_call_hook(engineCallHookDispatcher)
+    end
+
+    engineCallHookCount = engineCallHookCount + 1
+end
+
+safeEnv.lje.vm.remove_engine_call_hook = function(fn)
+    if (engineCallHookCount == 0) then
+        return
+    end
+
+    local i = 1
+    ::remove_engine_hook::
+    if (engineCallHooks[i] == fn) then
+        local newcount = engineCallHookCount - 1
+        engineCallHookCount = newcount
+        if (newcount == 0) then
+            lje.vm.set_engine_call_hook(engineCallHookNop)
+        end
+
+        table.remove(engineCallHooks, i)
+    elseif (i ~= engineCallHookCount) then
+        i = i + 1
+        goto remove_engine_hook
+    end
 end
 
 setfenv(safeEnv.lje.vm.add_engine_call_hook, safeEnv)
-
-local function engineCallHookDispatcher(func, nargs, nresults, ...)
-  if func == nil then
-    return
-  end
-
-  for _, hookFn in ipairs(engineCallHooks) do
-    local results = {hookFn(func, nargs, nresults, ...)}
-    if not results[1] then
-        -- This hook wants to take it, let them handle the call
-        return unpack(results, 2)
-    end
-  end
-
-  -- Otherwise, there's basically no hook that wants to dispatch this call, so we'll do it.
-  return func(...)
-end
-
 setfenv(engineCallHookDispatcher, safeEnv)
-lje.vm.set_engine_call_hook(engineCallHookDispatcher)
+setfenv(engineCallHookNop, safeEnv) -- Not really necessary but it's here anyway
+
+
+lje.vm.set_engine_call_hook(engineCallHookNop)
 lje.con_print("Engine call hook set!")
+
+----------[ Environment Setup ]----------
 
 -- Add a circular reference to the safe environment in the safeEnv
 safeEnv._L = safeEnv
