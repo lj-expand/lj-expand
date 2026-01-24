@@ -293,9 +293,9 @@ safeEnv.lje.vm.remove_engine_call_hook = function(fn)
 end
 
 setfenv(safeEnv.lje.vm.add_engine_call_hook, safeEnv)
+setfenv(safeEnv.lje.vm.remove_engine_call_hook, safeEnv)
 setfenv(engineCallHookDispatcher, safeEnv)
 setfenv(engineCallHookNop, safeEnv) -- Not really necessary but it's here anyway
-
 
 lje.vm.set_engine_call_hook(engineCallHookNop)
 lje.con_print("Engine call hook set!")
