@@ -180,6 +180,7 @@ setfenv(safeEnv.lje.con_printf, safeEnv)
 local type = type
 local rawget = rawget
 local istable = istable
+local _G = _G
 lje.get_global = function(...)
     -- Basically just a wrapper over rawget to traverse global tables safely
     -- For a faster version, see lje.get_global_static which does no dynamic allocations and doesn't rely on a vararg
