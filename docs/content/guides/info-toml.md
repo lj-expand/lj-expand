@@ -18,6 +18,7 @@ All fields live under the `[script]` table.
 | `name`         | string            | Yes      | The script's name. Used to identify it as a dependency target.                       |
 | `version`      | string            | Yes      | The script's version string (e.g. `"1.0.0"`). Not currently enforced, but required.  |
 | `author`       | string            | Yes      | The script's author. Combined with `name` to form the unique identity `author.name`. |
+| `URL`          | string            | No       | The script's repository.                                                             |
 | `dependencies` | array of strings  | Yes      | Scripts this script depends on. Use `[]` if there are none.                          |
 | `binaries`     | array of strings  | No       | Binary module names (excluding `.dll`) this script requires.                         |
 
@@ -31,13 +32,14 @@ author = "yourname"
 dependencies = []
 ```
 
-With dependencies and a binary module:
+With dependencies, binary module, and url.:
 
 ```toml
 [script]
 name = "myscript"
 version = "1.2.0"
 author = "yourname"
+url = "https://github.com/yourname/myscript"
 dependencies = ["yogwoggf.ljeutil", "someone.otherscript"]
 binaries = ["lje-mymodule"]
 ```
