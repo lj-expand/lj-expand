@@ -26,8 +26,6 @@ typedef struct LJEGlobalState
     LJEScript** script_load_order;
     /* Used for script execution context */
     LJEScript* current_script;
-    /* Used for flagging protos */
-    lua_CFunction adv_error_reporter;
     int using_error_reporter;
     /* Engine call hooks: in_pre_engine_call_hook is set while pre hooks run, so
        lje.vm.suppress_engine_call() can tell it is in a valid context. */

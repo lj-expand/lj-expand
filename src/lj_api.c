@@ -1480,11 +1480,7 @@ LUA_API int lua_pcall(lua_State *L, int nargs, int nresults, int errfunc)
       LJE_WARN("This often signals the stack is corrupted. Prepare for potential crash.");
     }
 
-    char is_adv_error_reporter = 0;
-    if (!is_function_null)
-      is_adv_error_reporter = iscfunc(f) ? f->c.f == LJEG()->adv_error_reporter : 0;
-
-    if (is_adv_error_reporter)
+    if (!is_function_null && iscfunc(f))
     {
       /* Secure scripts can observe engine call hooks. We copy the stack to the isolated
        * state and call the hook there. Functions are passed as simple lightud pointers so
@@ -2078,18 +2074,6 @@ lje_detour_export(mod, lua_newuserdata, lua_newuserdata);
           LJE_ERROR("Failed to detour lua_close! This may cause resource leaks when the game closes.");
         else
           LJE_DEBUG("Detoured lua_close successfully!");
-      }
-
-      /* LJE: This is a *tad* bit out-of-scope for LJE since we are very
-       * vehemently avoiding having to deal with the engine as opposed to LuaJIT, but
-       * given that the game makes *all* engine calls via this function, we have no choice.
-       */
-      LJEG()->adv_error_reporter = (lua_CFunction)lje_module_get_func(mod, LJE_SYM_ADV_ERROR_REPORTER);
-      if (LJEG()->adv_error_reporter)
-      {
-        LJE_DEBUG("Found AdvancedLuaErrorReporter at %p", LJEG()->adv_error_reporter);
-      } else {
-        LJE_WARN("AdvancedLuaErrorReporter not found!");
       }
 
       if (options->disable_binary_modules)
