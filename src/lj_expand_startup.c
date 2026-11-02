@@ -228,11 +228,13 @@ void lje_startup_secure_helpers(lua_State* L) {
     return;
 }
 
-int lje_startup_compile(lua_State* L, const char* source) {
+int lje_startup_compile(lua_State* L, const char* source, char error_buffer[512]) {
     luaL_loadbufferx_t original_loadbufferx = NULL;
     if (!resolve_original_functions(&original_loadbufferx, NULL))
     {
         LJE_ERROR("Failed to resolve original startup functions necessary...");
+        strncpy(error_buffer, "Failed to resolve original startup functions necessary...", 512);
+        error_buffer[511] = '\0'; // Ensure null termination
         return 0;
     }
 
@@ -243,6 +245,8 @@ int lje_startup_compile(lua_State* L, const char* source) {
     else
     {
         LJE_ERROR("Error compiling dynamic script: %s", lua_tostring(L, -1));
+        strncpy(error_buffer, lua_tostring(L, -1), 512);
+        error_buffer[511] = '\0';
         lua_pop(L, 1); // Pop error message
     }
 

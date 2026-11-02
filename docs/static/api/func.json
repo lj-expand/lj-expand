@@ -14,8 +14,8 @@
       ],
       "returns": [
         {
-          "type": "function | nil",
-          "description": "The compiled function, or `nil` if compilation failed."
+          "type": "function | string",
+          "description": "The compiled function, or a string containing the error message if compilation failed."
         }
       ]
     },

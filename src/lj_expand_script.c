@@ -8,6 +8,7 @@
 #include "lj_expand_globals.h"
 #include "lj_expand_log.h"
 #include "lj_expand_platform.h"
+#include "lj_expand_script_deps.h"
 
 void lje_script_resolve_base(char* out_buffer, size_t buffer_size) {
     if (!lje_directory_get(LJE_DIR_SCRIPTS, out_buffer, buffer_size))
@@ -365,93 +366,26 @@ LJEScript* lje_script_load_all_scripts(size_t* out_script_count) {
     return scripts;
 }
 
-static char is_script_in_load_order(LJEScript** load_order, size_t load_order_count, LJEScript* script)
-{
-    for (size_t i = 0; i < load_order_count; i++)
-    {
-        if (load_order[i] == script)
-            return 1;
-    }
-
-    return 0;
-}
-
 LJEScript** lje_script_compute_load_order(size_t script_count, LJEScript* scripts)
 {
     LJE_INFO("Computing script load order for %llu scripts...", script_count);
-    // Simple dependency resolution, we traverse scripts on some random, undefined order
-    // and for each newly encountered dependency, we insert it before the script that depends on it.
-    // It is not necessarily the best algorithm, but it works for now. And of course, if a dependency has already
-    // been added, we skip it.
 
-    LJEScript** load_order = (LJEScript**)malloc(sizeof(LJEScript*) * script_count);
-    size_t load_order_index = 0;
-    // Ensure zeroed out
-    for (size_t i = 0; i < script_count; i++)
-        load_order[i] = NULL;
+    LJEScript** load_order = NULL;
+    LJEScriptDepErrors errors;
+    if (lje_script_deps_resolve(scripts, script_count,
+                                LJEG()->loaded_binary_modules, LJEG()->loaded_binary_module_count,
+                                &load_order, &errors) != 0)
+    {
+        LJE_ERROR("Failed to compute script load order (out of memory).");
+        return NULL;
+    }
 
-    // Script traversal
+    lje_script_deps_log_errors(&errors);
+    lje_script_deps_free_errors(&errors);
+
     for (size_t i = 0; i < script_count; i++)
     {
-        LJE_DEBUG("Processing script for load order: %s by %s",
-            scripts[i].info->name,
-            scripts[i].info->author);
-        if (is_script_in_load_order(load_order, script_count, &scripts[i]))
-            continue; // Already added
-
-        // Process dependencies first
-        LJEScript* current_script = &scripts[i];
-        for (size_t j = 0; j < current_script->info->dependency_count; j++)
-        {
-            LJE_DEBUG("- Checking dependency: %s by %s",
-                current_script->info->dependencies[j].name,
-                current_script->info->dependencies[j].author);
-            LJEScriptDependency* dep = &current_script->info->dependencies[j];
-            char found_dep = 0;
-            // Find the script that matches this dependency
-            for (size_t k = 0; k < script_count; k++)
-            {
-                LJE_DEBUG("  - Comparing against script: %s by %s",
-                    scripts[k].info->name,
-                    scripts[k].info->author);
-                if (strcmp(scripts[k].info->name, dep->name) == 0 &&
-                    strcmp(scripts[k].info->author, dep->author) == 0)
-                {
-                    LJE_DEBUG("  - Found matching dependency script: %s by %s",
-                        scripts[k].info->name,
-                        scripts[k].info->author);
-                    // Found the dependency script
-                    if (!is_script_in_load_order(load_order, script_count, &scripts[k]))
-                    {
-                        LJE_DEBUG("  - Inserting dependency script into load order: %s by %s",
-                            scripts[k].info->name,
-                            scripts[k].info->author);
-                        // Insert dependency first
-                        load_order[load_order_index++] = &scripts[k];
-                    }
-
-                    found_dep = 1;
-                    break;
-                }
-            }
-
-            if (!found_dep)
-            {
-                // Warn user they are missing a dependency
-                LJE_WARN("Script '%s' by '%s' is missing dependency '%s' by '%s'",
-                    current_script->info->name,
-                    current_script->info->author,
-                    dep->name,
-                    dep->author);
-            }
-        }
-
-        // Insert this script
-        LJE_DEBUG("load_order_index = %llu, inserting script: %s by %s",
-            load_order_index,
-            current_script->info->name,
-            current_script->info->author);
-        load_order[load_order_index++] = current_script;
+        LJE_DEBUG("Load order %llu: %s by %s", i, load_order[i]->info->name, load_order[i]->info->author);
     }
 
     return load_order;

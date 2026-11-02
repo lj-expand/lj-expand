@@ -362,8 +362,12 @@ int lje_compile_string(lua_State* L)
     lj_err_arg(L, 1, LJ_ERR_NOVAL);
   }
 
-  if (!lje_startup_compile(L, script))
-    lua_pushnil(L);
+  char error_buffer[512] = {0};
+  if (!lje_startup_compile(L, script, error_buffer))
+  {
+    lua_pushstring(L, error_buffer);
+    return 1;
+  }
 
   return 1; // Return compiled function
 }
