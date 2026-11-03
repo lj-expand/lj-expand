@@ -1383,7 +1383,8 @@ LUA_API int lua_pcall(lua_State *L, int nargs, int nresults, int errfunc)
     {
       LJEScript* script = LJEG()->script_load_order[i];
       LJE_INFO("Running script %s...", script->info->name);
-      lje_startup_execute(LJEG()->isolated_state, script, NULL);
+      if (script->main_path != NULL)
+        lje_startup_execute(LJEG()->isolated_state, script, NULL);
     }
   }
 

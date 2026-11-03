@@ -2,6 +2,25 @@
 -- logic (no C API pulls, registry hacks or metatable setup) -- only self-contained
 -- helper functions. It runs alongside lje_secure_preinit.lua.
 
+lje.includeCache = {}
+lje.require = function(path)
+  local currentScript = lje.env.current_script()
+  if not currentScript then
+    lje.con_print("Error: lje.require called outside of a script context!")
+    return
+  end
+
+  lje.includeCache[currentScript] = lje.includeCache[currentScript] or {}
+  local scriptCache = lje.includeCache[currentScript]
+  if scriptCache[path] then
+    return scriptCache[path]
+  end
+
+  local result = lje.include(path)
+  scriptCache[path] = result
+  return result
+end
+
 -- Neatly print out any value using lje.con_print. Handles nested tables with
 -- indentation and guards against recursive (cyclic) references.
 function lje.util.inspect(x)

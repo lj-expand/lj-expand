@@ -287,8 +287,21 @@ LJEScript* lje_script_load_all_scripts(size_t* out_script_count) {
         if (!lje_path_join(info_path, sizeof(info_path), folder_path, "info.toml"))
             continue;
 
+        char boot_lua_path[LJE_PATH_MAX];
+        if (!lje_path_join(boot_lua_path, sizeof(boot_lua_path), folder_path, LJE_SCRIPT_BOOT))
+          continue;
+
+        char uses_main_entrypoint = 1;
         if (lje_plat_fs_kind(main_lua_path) != LJE_FS_FILE)
+        {
+          uses_main_entrypoint = 0;
+          // Not all scripts operate in the client state, some only have boot.lua, so check that quickly
+          if (lje_plat_fs_kind(boot_lua_path) != LJE_FS_FILE)
+          {
+            LJE_INFO("Skipping script %s: no entrypoints found", entry.name);
             continue;
+          }
+        }
 
         // Found a valid script
         LJEScriptInfo* info = lje_script_parse_info(info_path);
@@ -325,7 +338,7 @@ LJEScript* lje_script_load_all_scripts(size_t* out_script_count) {
 
         scripts = (LJEScript*)realloc(scripts, sizeof(LJEScript) * (script_count + 1));
         scripts[script_count].folder = lje_strdup(folder_path);
-        scripts[script_count].main_path = lje_strdup(main_lua_path);
+        scripts[script_count].main_path = uses_main_entrypoint ? lje_strdup(main_lua_path) : NULL;
         scripts[script_count].name = lje_strdup(entry.name);
         scripts[script_count].info = info;
 
@@ -348,9 +361,7 @@ LJEScript* lje_script_load_all_scripts(size_t* out_script_count) {
         }
 
         // Check for boot.lua
-        char boot_lua_path[LJE_PATH_MAX];
-        if (lje_path_join(boot_lua_path, sizeof(boot_lua_path), folder_path, LJE_SCRIPT_BOOT) &&
-            lje_plat_fs_kind(boot_lua_path) == LJE_FS_FILE)
+        if (lje_plat_fs_kind(boot_lua_path) == LJE_FS_FILE)
         {
             scripts[script_count].boot_path = lje_strdup(boot_lua_path);
         } else
@@ -493,8 +504,3 @@ char* lje_script_read(LJEScript* script, const char* relative_path, size_t* out_
   return buffer;
 }
 
-void lje_script_get_path(LJEScript* script, char* out_buffer, size_t buffer_size)
-{
-    // Simply return the main.lua path for now, we can expand this later if needed
-    lje_strlcpy(out_buffer, script->main_path, buffer_size);
-}

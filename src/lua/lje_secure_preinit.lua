@@ -97,22 +97,3 @@ function hook.Listen(post)
 end
 
 function hook.Call() --[[no-op]] end
-
-lje.includeCache = {}
-lje.require = function(path)
-  local currentScript = lje.env.current_script()
-  if not currentScript then
-    lje.con_print("Error: lje.require called outside of a script context!")
-    return
-  end
-
-  lje.includeCache[currentScript] = lje.includeCache[currentScript] or {}
-  local scriptCache = lje.includeCache[currentScript]
-  if scriptCache[path] then
-    return scriptCache[path]
-  end
-
-  local result = lje.include(path)
-  scriptCache[path] = result
-  return result
-end
