@@ -2,6 +2,37 @@
 -- logic (no C API pulls, registry hacks or metatable setup) -- only self-contained
 -- helper functions. It runs alongside lje_secure_preinit.lua.
 
+-- Small hook library replacement, no returns for now.
+hook = {}
+hook._listeners = {}
+
+function hook.Add(event, identifier, func)
+  local script = lje.env.current_script()
+  hook._listeners[script] = hook._listeners[script] or {}
+  if not hook._listeners[script][event] then
+    hook._listeners[script][event] = {}
+  end
+  hook._listeners[script][event][identifier] = func
+end
+
+function hook.Listen(post, targetState)
+  post = post or false
+  local script = lje.env.current_script()
+  if not hook._listeners[script] then
+    hook._listeners[script] = {}
+  end
+
+  lje.vm.add_engine_call_hook(function(func, nargs, nresults, name, gm, ...)
+    if name and hook._listeners[script][name] then
+      for _, listener in pairs(hook._listeners[script][name]) do
+        listener(...)
+      end
+    end
+  end, post, targetState)
+end
+
+function hook.Call() --[[no-op]] end
+
 lje.includeCache = {}
 lje.require = function(path)
   local currentScript = lje.env.current_script()

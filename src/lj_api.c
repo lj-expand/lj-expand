@@ -1904,35 +1904,8 @@ static void lua_close_detour(lua_State* L)
 #include <windows.h>
 #include <stdio.h>
 
-/* Bootstrap — extracted from DllMain so the same initialisation sequence can
- * later be called from a __attribute__((constructor)) shim on POSIX. */
-static void lje_bootstrap(void* self_handle)
+static void lje_install_api_detours(lje_Module* mod)
 {
-  lje_plat_init(self_handle);
-  lje_plat_console_init("LJE Console");
-
-  lje_Module* mod = lje_module_find(LJE_LUA_MODULE);
-    if (mod) {
-      LJECommandLineOptions* options = lje_get_command_line_options();
-      if (options->enable_debug_prints)
-        lje_log_set_min_level(LJE_LOG_DEBUG);
-
-      printf("\n");
-      lje_log_banner();
-      printf("\n\n");
-      LJE_SUCCESS("LJE loaded successfully!");
-      LJE_DEBUG("lua_shared.dll found at %p", mod->base);
-
-      LJE_INFO("Initializing crash handler...");
-      lje_crash_handler_init();
-      LJE_SUCCESS("Crash handler initialized!");
-
-      // Try migrating
-      if (!lje_migrate_legacy_dirs())
-      {
-        LJE_ERROR("Failed to migrate legacy directories! If you had scripts or binary modules in the old folders, please move them to the new ones manually.");
-      }
-
 // This is *very* annoying, but GMod's luaL_traceback seems to have inlined lj_debug_frame,
 // so we have to detour that as well to ensure our debug_frame is used.
 lje_detour_export(mod, luaL_traceback, luaL_traceback);
@@ -2066,6 +2039,38 @@ lje_detour_export(mod, lua_newuserdata, lua_newuserdata);
       lje_detour_export(mod, luaL_testudata, luaL_testudata);
       lje_detour_export(mod, luaL_setmetatable, luaL_setmetatable);
       lje_detour_export(mod, luaL_pushmodule, luaL_pushmodule);
+}
+
+/* Bootstrap — extracted from DllMain so the same initialisation sequence can
+ * later be called from a __attribute__((constructor)) shim on POSIX. */
+static void lje_bootstrap(void* self_handle)
+{
+  lje_plat_init(self_handle);
+  lje_plat_console_init("LJE Console");
+
+  lje_Module* mod = lje_module_find(LJE_LUA_MODULE);
+    if (mod) {
+      LJECommandLineOptions* options = lje_get_command_line_options();
+      if (options->enable_debug_prints)
+        lje_log_set_min_level(LJE_LOG_DEBUG);
+
+      printf("\n");
+      lje_log_banner();
+      printf("\n\n");
+      LJE_SUCCESS("LJE loaded successfully!");
+      LJE_DEBUG("lua_shared.dll found at %p", mod->base);
+
+      LJE_INFO("Initializing crash handler...");
+      lje_crash_handler_init();
+      LJE_SUCCESS("Crash handler initialized!");
+
+      // Try migrating
+      if (!lje_migrate_legacy_dirs())
+      {
+        LJE_ERROR("Failed to migrate legacy directories! If you had scripts or binary modules in the old folders, please move them to the new ones manually.");
+      }
+
+      lje_install_api_detours(mod);
 
       void* original_close = lje_module_get_func(mod, "lua_close");
       if (original_close)

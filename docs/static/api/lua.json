@@ -10,7 +10,7 @@
     {
       "name": "hook",
       "type": "table",
-      "description": "A minimal replacement for GMod's hook library, defined in the secure state. `hook.Add(event, identifier, func)` registers a listener; `hook.Listen()` installs an engine call hook (via `lje.vm.set_engine_call_hook`) that dispatches engine events to the registered listeners; `hook.Call` is a no-op. Listener return values are not supported yet."
+      "description": "A minimal replacement for GMod's hook library, defined in the secure state. `hook.Add(event, identifier, func)` registers a listener; `hook.Listen(post?, state?)` installs an engine call hook (via `lje.vm.set_engine_call_hook`) that dispatches engine events to the registered listeners; `hook.Call` is a no-op. Listener return values are not supported yet."
     },
     {
       "name": "cam.Start2D",
